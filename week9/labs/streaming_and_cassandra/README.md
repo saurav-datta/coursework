@@ -95,18 +95,28 @@ You should now have a jar file packaged a subdir of the `target` directory. You 
 
 Start the Spark cluster and submit the application for execution:
 
-    $SPARK_HOME/bin/spark-submit --master local[4]  --packages org.apache.bahir:spark-streaming-twitter_2.11:2.1.0,com.datastax.spark:spark-cassandra-connector_2.11:2.0.3  --class TweatEat $(find target -iname "*.jar") 
+    $SPARK_HOME/bin/spark-submit --master spark://spark1:7077  --packages org.apache.bahir:spark-streaming-twitter_2.11:2.1.0,com.datastax.spark:spark-cassandra-connector_2.11:2.0.3  --class TweatEat $(find target -iname "*.jar") 
 
 Please note the packages used.  If your versions different, you'll need to update.
 You should see output like this:
 
-    [root@spark1 tweeteat]# $SPARK_HOME/bin/spark-submit $SPARK_HOME/bin/spark-submit --master local[4]  --packages org.apache.bahir:spark-streaming-twitter_2.11:2.1.0,com.datastax.spark:spark-cassandra-connector_2.11:2.0.3  --class TweatEat $(find target -iname "*.jar")
-    15/07/08 12:34:10 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
-    A sample of tweets I gathered over 1s:  (total tweets fetched: 0)
-    15/07/08 12:34:14 WARN BlockManager: Block input-0-1436376853800 replicated to only 0 peer(s) instead of 1 peers
-    A sample of tweets I gathered over 1s:  (total tweets fetched: 0)
-    15/07/08 12:34:14 WARN BlockManager: Block input-0-1436376854200 replicated to only 0 peer(s) instead of 1 peers
-    A sample of tweets I gathered over 1s: TweetData(MadlyMindful,BOOK RECOMMENDATION! 'The Indie Spiritualist' by @XchrisGrossoX http://t.co/EITE7CtkRh http://t.co/3PyoNDbEdh) TweetData(looweetom,this is the best thing in the whOLE INTIRE WORLD https://t.co/FgZyGNGv5u) TweetData(1112_taim,RT @Ttahker: เมื่อน้องหมีอยากคุยกับน้องหมาด้วยภาษาของหมี #อุจุบุ #เอมน้ำ https://t.co/jRS3Av6bdo) TweetData(Rinnzilla,ทางเดียวที่จะผ่านปัญหา/ความเจ็บปวดไปได้ คือมองให้เห็น ให้เข้าใจ.. ไม่ใช่การกระโดดหนีออกจากมัน #ชีวิตคือการเปลี่ยนแปลง #แล้วมันจะผ่านไป แตงโม) TweetData(IbraOfficial_10,Arda Turan, 'Ballboy Barcelona' yang Kini Dilatih Enrique http://t.co/3L3ERZ9YVb) TweetData(JayyBrew,@ticketmaster is a joke!! Was on the site right when tickets went on sale & I missed Packers vs Broncos??!! Some bullshit! 😡) TweetData(JewellDelpin62,Season three premiered on September 10, 2012 and was watched by 12.) TweetData(amir_990,RT @Shmook2282: اللهم ان كثرت ذنوبنا ف اغفرها وان ظهرت عيوبنا ف استرها وان زادت همومنا ف أزلها وإن ضلت أنفسنا طريقها ف ردها إليك رداً جميل…)
+    [root@spark1 tweeteat]# $SPARK_HOME/bin/spark-submit $SPARK_HOME/bin/spark-submit --master spark://spark1:7077  --packages org.apache.bahir:spark-streaming-twitter_2.11:2.1.0,com.datastax.spark:spark-cassandra-connector_2.11:2.0.3  --class TweatEat $(find target -iname "*.jar")
+    /* snip */
+    18/07/10 03:06:44 INFO DAGScheduler: ResultStage 5 (count at tweeteat.scala:35) finished in 0.045 s
+    18/07/10 03:06:44 INFO DAGScheduler: Job 5 finished: count at tweeteat.scala:35, took 0.056466 s
+    A sample of tweets I gathered over 1s: TweetData(1016519047800766465,PetermanAva,Me: I’m gonna get up early this morning and be a good person and meditate!!!
+    *alarm goes off at 5am*
+    Me: https://t.co/EX9z7ZBQ28) TweetData(1016519047784075265,tbet26,@AirCoopsie Dear me...someone bring in the rain               https://t.co/AOgjkdnjVM) TweetData(1016519051969945601,yuka94vip,こおゆうときにさ、男性スタッフがちゃんと守ってくれるべきじゃないの？
+    客にぺこぺこしちゃってさー。
+    だっさ。
+
+    間違ってることははっきり言わないと
+    つけあがるだけやん。
+
+    だからややこしい客多いねん。) TweetData(1016519051986681861,Mrchmadnes,@ChrisLu44 @Mezzo13531 Obama is intelligent and likes  learning.) TweetData(1016519051994992642,ashslay_haaa,RT @LiveLikeDavis: Hater : Sza hasn’t dropped any new music , you still listen to CRTL ?
+    TweetData(1016519051978395654,tay_sagittarius,RT @RockettLynette: A 9-5 was never corny ... being broke is) (total tweets fetched: 41)
+    18/07/10 03:06:44 INFO JobScheduler: Finished job streaming job 1531192004000 ms.0 from job set of time 1531192004000 ms
+
 
 ## Part 2: Cassandra Setup
 
@@ -141,6 +151,8 @@ You should now be able to access the `cqlsh` shell on your Cassandra instance:
 
 Use CTRL-D to exit the shell.
 
+Note that if you want to run Cassandra in a non-local (server) mode, you will need to edit /etc/cassandra/cassandra.yaml and specify there the IP address on which Cassandra should be listening (see the rpc_address variable). Unless you also configure Cassandra security, use the internal IP of the Cassandra node.
+
 ### Create Cassandra Keyspace, Table
 
 Enter the `cqlsh` shell and execute the following instructions:
@@ -152,8 +164,7 @@ Enter the `cqlsh` shell and execute the following instructions:
 
 ### Edit the Tweet-consuming App
 
-Edit `tweeteat.scala` to write incoming DStream data to your Cassandra test cluster. First, you must set this property on the `SparkConf` object that gets passed to the `StreamingContext` constructor. You can do this by adding this method call to `SparkConf` object:
-
+Edit `tweeteat.scala` to write incoming DStream data to your Cassandra test cluster. First, you must set this property on the `SparkConf` object that gets passed to the `StreamingContext` constructor. You can do this by adding this method call to `SparkConf` object (assuming you're connecting to Cassandra locally)
     .set("spark.cassandra.connection.host", "127.0.0.1")
 
 You'll also need to add the following imports:
@@ -174,7 +185,7 @@ There are a few noteworthy elements in this line. First, since we're not going t
 
 ### Run the Modified App
 
-Repackage your application and execute it again in Spark. You should notice that the tweet output from the first execution is missing and that log statements in the output report writes to the Cassandra instance.  Note, we have already included the Cassandra packages in both our build.sbt and in our job submission.
+Repackage your application and execute it again in Spark. You should notice that the tweet output from the first execution is missing and that log statements in the output report writes to the Cassandra instance.  Note, we have already included the Cassandra packages in both our build.sbt and in our job submission.  Note also that if your Cassandra IP is 127.0.0.1, you need to --master localhost [4] (4 here stands for the number of CPUs in the VM) otherwise other members of the cluster won't be able to connect.
 
 If you get an error similar to 
 
